@@ -60,10 +60,10 @@ func main() {
 		if err != nil {
 			utils.Bail("Error when cleaning up remote: %s", err)
 		}
-	}
 
-	if !cfg.Params.ContinueOnFailure && !payload.Passed {
-		utils.Bail("Remote job returned with failure!")
+		if !cfg.Params.ContinueOnFailure && !payload.Passed {
+			utils.Bail("Remote job returned with failure!")
+		}
 	}
 
 	writeJSON(filepath.Join(os.Args[1], "version"), &cfg.Version)
