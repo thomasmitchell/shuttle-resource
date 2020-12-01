@@ -55,7 +55,7 @@ func main() {
 	if cfg.Params.Wait {
 		for !payload.Done {
 			time.Sleep(30 * time.Second)
-			fmt.Fprintf(os.Stderr, "Resource not ready. Waiting...")
+			fmt.Fprintf(os.Stderr, "Resource not ready. Waiting...\n")
 			payload, err = drv.Read(cfg.Version)
 			if err != nil {
 				utils.Bail("Error when reading from remote: %s", err)
@@ -77,7 +77,7 @@ func main() {
 
 	enc := json.NewEncoder(os.Stdout)
 	err = enc.Encode(&Output{
-		Version: cfg.Version,
+		Version:  cfg.Version,
 		Metadata: metadata,
 	})
 	if err != nil {
