@@ -21,6 +21,7 @@ type Config struct {
 type Params struct {
 	Wait              bool `json:"wait"`
 	ContinueOnFailure bool `json:"continue_on_failure"`
+	Skip              bool `json:"skip"`
 }
 
 type Output struct {
@@ -46,6 +47,11 @@ func main() {
 		utils.Bail("Error when reading from remote: %s", err)
 	}
 
+	var metadata []map[string]string
+
+	if cfg.Params.Skip {
+		metadata = []map[string]string{{"name": "skipped", "value": "true"}}
+	}
 	if cfg.Params.Wait {
 		for !payload.Done {
 			time.Sleep(30 * time.Second)
@@ -64,6 +70,7 @@ func main() {
 		if !cfg.Params.ContinueOnFailure && !payload.Passed {
 			utils.Bail("Remote job returned with failure!")
 		}
+		metadata = []map[string]string{{"name": "caller", "value": payload.Caller}}
 	}
 
 	writeJSON(filepath.Join(os.Args[1], "version"), &cfg.Version)
@@ -71,9 +78,7 @@ func main() {
 	enc := json.NewEncoder(os.Stdout)
 	err = enc.Encode(&Output{
 		Version: cfg.Version,
-		Metadata: []map[string]string{
-			{"name": "caller", "value": payload.Caller},
-		},
+		Metadata: metadata,
 	})
 	if err != nil {
 		utils.Bail("Could not encode output JSON: %s", err)
