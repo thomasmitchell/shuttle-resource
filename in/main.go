@@ -40,9 +40,6 @@ func main() {
 
 	mode := parseMode(cfg.Params)
 
-	var metadata []map[string]string
-	var payload *models.Payload
-
 	if mode == modeSkip {
 		writeOutput(
 			cfg.Version,
@@ -61,7 +58,7 @@ func main() {
 		utils.Bail("Failed to initialize driver: %s", err)
 	}
 
-	payload, err = drv.Read(cfg.Version)
+	payload, err := drv.Read(cfg.Version)
 	if err != nil {
 		utils.Bail("Error when reading from remote: %s", err)
 	}
