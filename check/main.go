@@ -39,7 +39,7 @@ func main() {
 	}
 
 	enc := json.NewEncoder(os.Stdout)
-	err = enc.Encode([]models.Version{remoteVersion})
+	err = enc.Encode(output)
 	if err != nil {
 		utils.Bail("Error encoding output value: %s", err)
 	}
