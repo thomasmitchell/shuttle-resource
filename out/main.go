@@ -34,19 +34,14 @@ func main() {
 		utils.Bail("Failed to initialize driver: %s", err)
 	}
 
-	remoteLatest, err := drv.LatestVersion()
-	if err != nil {
-		utils.Bail("Error fetching latest version: %s", err)
-	}
-
-	ver := remoteLatest.Increment()
+	ver := models.NewVersion()
 
 	err = drv.Write(
 		ver,
 		models.Payload{Caller: utils.CallerName()},
 	)
 	if err != nil {
-		utils.Bail("Error writing to version `%s': %s", ver.Number, err)
+		utils.Bail("Error writing to version `%s': %s", ver, err)
 	}
 
 	output := Output{

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
@@ -90,8 +91,8 @@ func (s *s3Driver) Write(version models.Version, payload models.Payload) error {
 	return err
 }
 
-func (s *s3Driver) LatestVersion() (models.Version, error) {
-	ret := models.NewVersion("0")
+func (s *s3Driver) Versions() (models.VersionList, error) {
+	ret := models.VersionList{models.VersionFromInt(0)}
 	//there... really should never be more than 1000 active versions in the bucket
 	// unless something has gone wrong, so I've forgone pagination for now.
 	listObjOut, err := s.s3.ListObjectsV2(&s3.ListObjectsV2Input{
@@ -103,10 +104,18 @@ func (s *s3Driver) LatestVersion() (models.Version, error) {
 	}
 
 	for _, obj := range listObjOut.Contents {
-		candidate := models.NewVersion(filepath.Base(*obj.Key))
-		if ret.LessThan(candidate) {
-			ret = candidate
+		vString := filepath.Base(*obj.Key)
+		v, err := models.VersionFromString(vString)
+		if err != nil {
+			return nil,
+				fmt.Errorf(
+					"Version could not be parsed from string `%s': %s",
+					vString,
+					err,
+				)
 		}
+
+		ret = append(ret, v)
 	}
 
 	return ret, nil
@@ -122,5 +131,5 @@ func (s *s3Driver) Clean(version models.Version) error {
 }
 
 func (s *s3Driver) keyFor(version models.Version) string {
-	return s.path + version.Number
+	return s.path + version.String()
 }

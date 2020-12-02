@@ -22,22 +22,13 @@ func main() {
 		utils.Bail("Failed to decode input JSON: %s", err)
 	}
 
-	if cfg.Version.Number == "" {
-		cfg.Version.Number = "0"
-	}
-
 	drv, err := driver.New(cfg.Source)
-	remoteVersion, err := drv.LatestVersion()
+	versions, err := drv.Versions()
 	if err != nil {
 		utils.Bail("Error when reading from remote: %s", err)
 	}
 
-	output := []models.Version{}
-	for cfg.Version.LessThan(remoteVersion) {
-		output = append(output, remoteVersion)
-		remoteVersion = remoteVersion.Decrement()
-	}
-
+	output := versions.Since(cfg.Version)
 	enc := json.NewEncoder(os.Stdout)
 	err = enc.Encode(output)
 	if err != nil {
