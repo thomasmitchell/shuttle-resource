@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/thomasmitchell/shuttle-resource/driver"
@@ -22,6 +21,8 @@ type Params struct {
 	Wait              bool `json:"wait"`
 	ContinueOnFailure bool `json:"continue_on_failure"`
 	Skip              bool `json:"skip"`
+	Return            bool `json:"return"`
+	Fail              bool `json:"fail"`
 }
 
 type Output struct {
@@ -37,22 +38,46 @@ func main() {
 		utils.Bail("Failed to decode input JSON: %s", err)
 	}
 
+	mode := parseMode(cfg.Params)
+
+	var metadata []map[string]string
+	var payload *models.Payload
+
+	if mode == modeSkip {
+		writeOutput(
+			cfg.Version,
+			[]map[string]string{
+				{
+					"name":  "skipped",
+					"value": "true",
+				},
+			},
+		)
+		return
+	}
+
 	drv, err := driver.New(cfg.Source)
 	if err != nil {
 		utils.Bail("Failed to initialize driver: %s", err)
 	}
 
-	payload, err := drv.Read(cfg.Version)
+	payload, err = drv.Read(cfg.Version)
 	if err != nil {
 		utils.Bail("Error when reading from remote: %s", err)
 	}
 
-	var metadata []map[string]string
+	switch mode {
+	case modeGet:
 
-	if cfg.Params.Skip {
-		metadata = []map[string]string{{"name": "skipped", "value": "true"}}
-	}
-	if cfg.Params.Wait {
+	case modeReturn:
+		payload.Done = true
+		payload.Passed = !cfg.Params.Fail
+		err = drv.Write(cfg.Version, *payload)
+		if err != nil {
+			utils.Bail("Error writing to version `%s': %s", cfg.Version, err)
+		}
+
+	case modeWait:
 		for !payload.Done {
 			time.Sleep(30 * time.Second)
 			fmt.Fprintf(os.Stderr, "Resource not ready. Waiting...\n")
@@ -70,14 +95,58 @@ func main() {
 		if !cfg.Params.ContinueOnFailure && !payload.Passed {
 			utils.Bail("Remote job returned with failure!")
 		}
-		metadata = []map[string]string{{"name": "caller", "value": payload.Caller}}
 	}
 
-	writeJSON(filepath.Join(os.Args[1], "version"), &cfg.Version)
+	writeOutput(cfg.Version, genMetadata(payload))
+}
 
+type modeT int
+
+const (
+	modeGet modeT = iota
+	modeSkip
+	modeReturn
+	modeWait
+)
+
+func parseMode(p Params) modeT {
+	modes := 0
+	ret := modeGet
+
+	if p.Skip {
+		ret = modeSkip
+		modes++
+	}
+
+	if p.Wait {
+		ret = modeWait
+		modes++
+	}
+
+	if p.Return {
+		ret = modeReturn
+		modes++
+	}
+
+	if modes > 1 {
+		utils.Bail("Must only specify one of skip, return, or wait")
+	}
+
+	if p.Fail && !p.Return {
+		utils.Bail("Cannot specify fail without return")
+	}
+
+	if p.ContinueOnFailure && !p.Wait {
+		utils.Bail("Cannot specify continue_on_failure without wait")
+	}
+
+	return ret
+}
+
+func writeOutput(version models.Version, metadata []map[string]string) {
 	enc := json.NewEncoder(os.Stdout)
-	err = enc.Encode(&Output{
-		Version:  cfg.Version,
+	err := enc.Encode(&Output{
+		Version:  version,
 		Metadata: metadata,
 	})
 	if err != nil {
@@ -85,17 +154,11 @@ func main() {
 	}
 }
 
-func writeJSON(path string, obj interface{}) {
-	f, err := os.Create(path)
-	if err != nil {
-		utils.Bail("Could not open up file at `%s': %s", err)
-	}
-
-	defer f.Close()
-
-	enc := json.NewEncoder(f)
-	err = enc.Encode(&obj)
-	if err != nil {
-		utils.Bail("Could not encode JSON to file: %s")
+func genMetadata(payload *models.Payload) []map[string]string {
+	return []map[string]string{
+		{
+			"name":  "caller",
+			"value": payload.Caller,
+		},
 	}
 }
