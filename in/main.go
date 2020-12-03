@@ -89,9 +89,15 @@ func main() {
 			utils.Bail("Error when cleaning up remote: %s", err)
 		}
 
-		if !cfg.Params.ContinueOnFailure && !payload.Passed {
-			utils.Bail("Remote job returned with failure!")
+		msg := "Remote job returned with success!"
+		if !payload.Passed {
+			msg := "Remote job returned with failure!"
+
+			if !cfg.Params.ContinueOnFailure {
+				utils.Bail(msg)
+			}
 		}
+		fmt.Fprintf(os.Stderr, "%s\n", msg)
 	}
 
 	writeOutput(cfg.Version, genMetadata(payload))
