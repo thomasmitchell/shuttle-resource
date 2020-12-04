@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"time"
 
@@ -60,13 +59,24 @@ func main() {
 
 	payload, err := drv.Read(cfg.Version)
 	if err != nil {
-		utils.Bail("Error when reading from remote: %s", err)
+		if !driver.IsNotFound(err) {
+			utils.Bail("Error when reading from remote: %s", err)
+		}
+
+		payload = &models.Payload{
+			Caller: "cleaned",
+			Done:   true,
+			Passed: true,
+		}
 	}
 
 	switch mode {
 	case modeGet:
 
 	case modeReturn:
+		if payload.Done {
+			break
+		}
 		payload.Done = true
 		payload.Passed = !cfg.Params.Fail
 		err = drv.Write(cfg.Version, *payload)
@@ -77,7 +87,7 @@ func main() {
 	case modeWait:
 		for !payload.Done {
 			time.Sleep(30 * time.Second)
-			fmt.Fprintf(os.Stderr, "Resource not ready. Waiting...\n")
+			utils.Log("Resource not ready. Waiting...")
 			payload, err = drv.Read(cfg.Version)
 			if err != nil {
 				utils.Bail("Error when reading from remote: %s", err)
@@ -89,7 +99,7 @@ func main() {
 			utils.Bail("Error when cleaning up remote: %s", err)
 		}
 
-		msg := "Remote job returned with success!"
+		msg := "@G{Remote job returned with success!}"
 		if !payload.Passed {
 			msg := "Remote job returned with failure!"
 
@@ -97,7 +107,7 @@ func main() {
 				utils.Bail(msg)
 			}
 		}
-		fmt.Fprintf(os.Stderr, "%s\n", msg)
+		utils.Log(msg)
 	}
 
 	writeOutput(cfg.Version, genMetadata(payload))

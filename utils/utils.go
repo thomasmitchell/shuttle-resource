@@ -12,6 +12,11 @@ func Bail(f string, args ...interface{}) {
 	os.Exit(1)
 }
 
+func Log(f string, args ...interface{}) {
+	ansi.Fprintf(os.Stderr, f+"\n", args...)
+	os.Exit(1)
+}
+
 func CallerName() string {
 	return fmt.Sprintf(
 		"%s/%s/%s:%s",
