@@ -14,7 +14,6 @@ func Bail(f string, args ...interface{}) {
 
 func Log(f string, args ...interface{}) {
 	ansi.Fprintf(os.Stderr, f+"\n", args...)
-	os.Exit(1)
 }
 
 func CallerName() string {
