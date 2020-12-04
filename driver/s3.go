@@ -92,7 +92,7 @@ func (s *s3Driver) Write(version models.Version, payload models.Payload) error {
 }
 
 func (s *s3Driver) Versions() (models.VersionList, error) {
-	ret := models.VersionList{models.VersionFromInt(0)}
+	ret := models.VersionList{}
 	//there... really should never be more than 1000 active versions in the bucket
 	// unless something has gone wrong, so I've forgone pagination for now.
 	listObjOut, err := s.s3.ListObjectsV2(&s3.ListObjectsV2Input{

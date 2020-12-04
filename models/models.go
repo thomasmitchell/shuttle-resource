@@ -14,4 +14,5 @@ type Source struct {
 	Path            string `json:"path"`
 	Endpoint        string `json:"endpoint"`
 	TLSSkipVerify   bool   `json:"tls_skip_verify"`
+	SeedVersion     bool   `json:"seed_version"`
 }
